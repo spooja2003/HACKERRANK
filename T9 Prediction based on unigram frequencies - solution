@@ -1,0 +1,205 @@
+import java.io.*;
+import java.util.*;
+
+public class Solution
+{
+    /*
+     * Read from dictionary, Read from corpus, Calculate frequencies, Predict
+     */
+    public static class Builder
+    {
+        /* Word, Values (Frequency, T9 value) */
+        public Map<String, T9> dictionary;
+
+        public Builder()
+        {
+            dictionary = new HashMap<String, T9>();
+        }
+
+        public void build(String s)
+        {
+            T9 values = new T9();
+
+            values.word = s;
+            values.t9Value = convert(s);
+            dictionary.put(s, values);
+        }
+
+        /* Convert a string to its T9 value */
+        public String convert(String s)
+        {
+            String t9val = "";
+            String[] array = s.split("(?<!^)");
+
+            for(String c : array)
+            {
+                if("abc".contains(c))
+                    t9val += "2";
+                else if("def".contains(c))
+                    t9val += "3";
+                else if("ghi".contains(c))
+                    t9val += "4";
+                else if("jkl".contains(c))
+                    t9val += "5";
+                else if("mno".contains(c))
+                    t9val += "6";
+                else if("pqrs".contains(c))
+                    t9val += "7";
+                else if("tuv".contains(c))
+                    t9val += "8";
+                else if("wxyz".contains(c))
+                    t9val += "9";
+            }
+            return t9val;
+        }
+
+        /* Build frequency map */
+        public void freqMap(String s)
+        {
+            if(dictionary.containsKey(s))
+            {
+                dictionary.get(s).frequency++;
+            }
+        }
+
+        /* Return candidates in frequency order */
+        public PriorityQueue<T9> candidates(String t9val)
+        {
+            PriorityQueue<T9> queue = new PriorityQueue<T9>(1,
+                    new WordFrequencyComparator());
+
+            /*
+             * If a known T9 value starts with specified T9 value, it is a
+             * candidate
+             */
+            for(T9 word : dictionary.values())
+            {
+                if(word.t9Value.startsWith(t9val))
+                    queue.add(word);
+            }
+
+            return queue;
+        }
+
+        /* Suggest top 5 candidates */
+        public void suggest(String t9val)
+        {
+            PriorityQueue<T9> queue = candidates(t9val);
+            String suggestions = "";
+
+            for(int i = 0; i < 5; i++)
+            {
+                if(queue.peek() != null)
+                    suggestions += queue.poll().word + ";";
+            }
+
+            if(suggestions == "")
+            {
+                suggestions = "No Suggestions";
+            }
+
+            if(suggestions.endsWith(";"))
+            {
+                suggestions = suggestions
+                        .substring(0, suggestions.length() - 1);
+            }
+            System.out.println(suggestions);
+        }
+    }
+
+    public static class T9
+    {
+        public String word;
+        public String t9Value;
+        public long frequency;
+
+        public T9()
+        {
+            word = "";
+            t9Value = "";
+            frequency = 1L;
+        }
+    }
+
+    /* Compare two words according to their frequencies */
+    public static class WordFrequencyComparator implements Comparator<T9>
+    {
+        public int compare(T9 value1, T9 value2)
+        {
+            long result = value2.frequency - value1.frequency;
+
+            return result != 0 ? (int) result : value1.word
+                    .compareTo(value2.word);
+        }
+    }
+
+    public static void main(String[] args) throws IOException
+    {
+        /* Read from t9Dictionary */
+        FileInputStream dictionary = new FileInputStream("t9Dictionary");
+        /* Read from t9TextCorpus */
+        FileInputStream text = new FileInputStream("t9TextCorpus");
+
+        Scanner dictRead = new Scanner(new InputStreamReader(dictionary));
+        Scanner textRead = new Scanner(new InputStreamReader(text));
+        Scanner inputRead = new Scanner(new InputStreamReader(System.in));
+
+        String s;
+        /* Number of lines */
+        s = dictRead.nextLine();
+
+        /* Create the Builder */
+        Builder builder = new Builder();
+
+        while (dictRead.hasNext())
+        {
+            s = dictRead.nextLine();
+            builder.build(s);
+        }
+
+        while (textRead.hasNext())
+        {
+            s = textRead.next();
+
+            /* If string starts with non alpha char then cut it */
+            boolean remove = true;
+            while (s.length() > 0 && remove)
+            {
+                String c = String.valueOf(s.charAt(0));
+                if(c.matches("[^A-Za-z]"))
+                {
+                    s = s.substring(1, s.length());
+                }
+                else
+                {
+                    remove = false;
+                }
+            }
+
+            /* If string ends with non alpha char then cut it */
+            remove = true;
+            while (s.length() > 0 && remove)
+            {
+                String c = String.valueOf(s.charAt(s.length() - 1));
+                if(c.matches("[^A-Za-z]"))
+                {
+                    s = s.substring(0, s.length() - 1);
+                }
+                else
+                {
+                    remove = false;
+                }
+            }
+
+            builder.freqMap(s);
+        }
+
+        /* Number of lines */
+        inputRead.next();
+        while (inputRead.hasNext())
+        {
+            s = inputRead.next();
+            builder.suggest(s);
+        }
+    }
+}
